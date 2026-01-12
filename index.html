@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>西堠门索导管调整V13-PWA</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="索导管调整">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2345/2345470.png">
+
+    <style>
+        :root { --primary: #007aff; --up-color: #f59e0b; --down-color: #10b981; --bg: #f2f2f7; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding-bottom: 30px; }
+        .header { background: #111827; color: white; padding: 12px; text-align: center; border-bottom: 3px solid var(--up-color); }
+        .tab-bar { height: 50px; background: #fff; display: flex; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 1000; }
+        .tab-item { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #8e8e93; }
+        .tab-item.active { color: var(--primary); border-bottom: 3px solid var(--primary); font-weight: bold; }
+        .sheet { display: none; padding: 10px; }
+        .sheet.active { display: block; }
+        .card { background: #fff; border-radius: 10px; padding: 15px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card h3 { margin: 0 0 12px; font-size: 15px; color: #333; border-left: 4px solid var(--primary); padding-left: 8px; }
+        .selector-group { display: flex; gap: 5px; margin-bottom: 15px; }
+        .selector-group select { flex: 1; height: 40px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: #f9f9f9; padding: 0 5px; }
+        .input-row { display: flex; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f2f2f7; padding-bottom: 5px; }
+        .input-row label { width: 110px; font-size: 13px; color: #64748b; font-weight: bold; }
+        .input-row input { flex: 1; border: none; padding: 8px 0; font-size: 17px; background: transparent; color: var(--primary); outline: none; }
+        .axis-info { background: #f0f4f8; border-radius: 8px; padding: 10px; margin: 10px 0; font-size: 11px; line-height: 1.6; color: #334155; }
+        .design-box { background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 10px; margin-top: 5px; font-size: 14px; color: #9a3412; }
+        .val-bold { font-family: monospace; font-weight: bold; color: #000; }
+        .btn { width: 100%; height: 48px; border-radius: 10px; border: none; font-size: 16px; font-weight: bold; margin: 10px 0; color: white; }
+        .res-display { background: #0f172a; color: #f8fafc; border-radius: 8px; padding: 15px; margin-top: 10px; font-size: 14px; line-height: 1.6; }
+        .adj-msg { color: #fde047; font-weight: bold; float: right; }
+        .warn-msg { color: #ff4d4f; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+        th, td { border: 1px solid #eee; padding: 6px; text-align: center; }
+        th { background: #f8fafc; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1 style="margin:0; font-size:16px;">索导管调整系统 V13.0 (PWA)</h1>
+</div>
+
+<div class="tab-bar">
+    <div class="tab-item active" onclick="switchTab('up', this)">上口复核</div>
+    <div class="tab-item" onclick="switchTab('down', this)">下口复核</div>
+    <div class="tab-item" onclick="switchTab('all', this)">汇总记录</div>
+</div>
+
+<div id="sheet-up" class="sheet active">
+    <div class="card">
+        <h3>1. 选择管号与预抬</h3>
+        <div class="selector-group">
+            <select id="lr_up" onchange="syncDuctList('up')"><option value="左">左线</option><option value="右">右线</option></select>
+            <select id="sm_up" onchange="syncDuctList('up')"><option value="S">S (边跨)</option><option value="M">M (中跨)</option></select>
+            <select id="no_up" onchange="calcUpDesign()"></select>
+        </div>
+        <div class="input-row"><label>预抬值 (m)</label><input type="number" id="lift_up" step="0.001" placeholder="必须输入预抬" oninput="calcUpDesign()"></div>
+        <div class="axis-info" id="axis_up">请选择管号并输入预抬值...</div>
+        <div class="input-row"><label>设计高程</label><input type="number" id="dz_up" step="0.001" placeholder="含预抬设计高程" oninput="calcUpDesign()"></div>
+        <div class="design-box">理论 X: <span id="tdx_up" class="val-bold">-</span> | Y: <span id="tdy_up" class="val-bold">-</span></div>
+    </div>
+    <div class="card">
+        <h3>2. 实测录入 (X-Y-Z)</h3>
+        <div class="input-row"><label>实测 X</label><input type="number" id="mx_up" step="0.001" placeholder="0.000"></div>
+        <div class="input-row"><label>实测 Y</label><input type="number" id="my_up" step="0.001" placeholder="0.000"></div>
+        <div class="input-row"><label>实测 Z</label><input type="number" id="mz_up" step="0.001" placeholder="0.000"></div>
+        <button class="btn" style="background:var(--up-color)" onclick="calculate('up')">计算并保存记录</button>
+        <div id="res_up" class="res-display" style="display:none"></div>
+    </div>
+</div>
+
+<div id="sheet-down" class="sheet">
+    <div class="card">
+        <h3>1. 选择管号与预抬</h3>
+        <div class="selector-group">
+            <select id="lr_down" onchange="syncDuctList('down')"><option value="左">左线</option><option value="右">右线</option></select>
+            <select id="sm_down" onchange="syncDuctList('down')"><option value="S">S (边跨)</option><option value="M">M (中跨)</option></select>
+            <select id="no_down" onchange="calcDownDesign()"></select>
+        </div>
+        <div class="input-row"><label>预抬值 (m)</label><input type="number" id="lift_down" step="0.001" placeholder="必须输入预抬" oninput="calcDownDesign()"></div>
+        <div class="axis-info" id="axis_down">请选择管号并输入预抬值...</div>
+    </div>
+    <div class="card">
+        <h3>2. 实测录入</h3>
+        <div class="input-row"><label>实测 X</label><input type="number" id="mx_down" step="0.001" placeholder="0.000"></div>
+        <div class="input-row"><label>实测 Y</label><input type="number" id="my_down" step="0.001" placeholder="0.000"></div>
+        <div class="input-row"><label>实测 Z</label><input type="number" id="mz_down" step="0.001" placeholder="必须输入Z" oninput="calcDownDesign()"></div>
+        <div class="design-box">对应理论 X: <span id="tdx_down" class="val-bold">-</span> | Y: <span id="tdy_down" class="val-bold">-</span></div>
+        <button class="btn" style="background:var(--down-color)" onclick="calculate('down')">计算并保存记录</button>
+        <div id="res_down" class="res-display" style="display:none"></div>
+    </div>
+</div>
+
+<div id="sheet-all" class="sheet">
+    <div class="card">
+        <h3>1. 管号互差校核</h3>
+        <div id="diff_table"></div>
+        <button class="btn" style="background:var(--primary); height:35px; font-size:13px;" onclick="exportDiffCSV()">导出互差数据</button>
+    </div>
+    <div class="card">
+        <h3>2. 历史详细记录</h3>
+        <div id="history_list" style="max-height:300px; overflow-y:auto"></div>
+        <button class="btn" style="background:#fff; border:1px solid #ccc; color:#333; height:35px; font-size:13px; margin-top:10px" onclick="exportCSV()">导出全量记录</button>
+    </div>
+</div>
+
+<script>
+    // 数据源 (此处仅保留部分示意，请确保使用您完整的数据库)
+    const rawData = ["右S36,-6.243,1.822,286.308,-4.2,1.702,287.353","右S35,-6.266,1.906,283.776,-4.2,1.781,284.839","左S36,-6.243,-1.822,286.308,-4.2,-1.702,287.353"];
+
+    const db = {};
+    rawData.forEach(s => { const p = s.split(','); db[p[0]] = p.slice(1).map(Number); });
+    let history = JSON.parse(localStorage.getItem('xh_v13_db') || '[]');
+
+    function syncDuctList(p) {
+        const lr = document.getElementById(`lr_${p}`).value;
+        const sm = document.getElementById(`sm_${p}`).value;
+        const select = document.getElementById(`no_${p}`);
+        select.innerHTML = "";
+        for(let i=1; i<=36; i++) {
+            const key = lr + sm + i;
+            if(db[key]) select.add(new Option(i + "号管", key));
+        }
+        p === 'up' ? calcUpDesign() : calcDownDesign();
+    }
+
+    function calcUpDesign() {
+        const key = document.getElementById('no_up').value;
+        const liftStr = document.getElementById('lift_up').value;
+        const dz = parseFloat(document.getElementById('dz_up').value);
+        if(!key || liftStr === "") {
+            document.getElementById('axis_up').innerHTML = "<span style='color:red'>请输入预抬值</span>";
+            return;
+        }
+        const lift = parseFloat(liftStr);
+        const d = db[key];
+        document.getElementById('axis_up').innerHTML = `
+            <b>出塔点:</b> X:${d[0].toFixed(3)}, Y:${d[1].toFixed(3)}, Z:${(d[2]+lift).toFixed(3)}<br>
+            <b>入塔点:</b> X:${d[3].toFixed(3)}, Y:${d[4].toFixed(3)}, Z:${(d[5]+lift).toFixed(3)}
+        `;
+        if(isNaN(dz)) return;
+        const res = interpolate(key, lift, dz);
+        document.getElementById('tdx_up').innerText = res.dx.toFixed(4);
+        document.getElementById('tdy_up').innerText = res.dy.toFixed(4);
+    }
+
+    function calcDownDesign() {
+        const key = document.getElementById('no_down').value;
+        const liftStr = document.getElementById('lift_down').value;
+        const mz = parseFloat(document.getElementById('mz_down').value);
+        if(!key || liftStr === "") {
+            document.getElementById('axis_down').innerHTML = "<span style='color:red'>请输入预抬值</span>";
+            return;
+        }
+        const lift = parseFloat(liftStr);
+        const d = db[key];
+        document.getElementById('axis_down').innerHTML = `
+            <b>出塔点:</b> X:${d[0].toFixed(3)}, Y:${d[1].toFixed(3)}, Z:${(d[2]+lift).toFixed(3)}<br>
+            <b>入塔点:</b> X:${d[3].toFixed(3)}, Y:${d[4].toFixed(3)}, Z:${(d[5]+lift).toFixed(3)}
+        `;
+        if(isNaN(mz)) return;
+        const res = interpolate(key, lift, mz);
+        document.getElementById('tdx_down').innerText = res.dx.toFixed(4);
+        document.getElementById('tdy_down').innerText = res.dy.toFixed(4);
+    }
+
+    function interpolate(key, lift, targetZ) {
+        const d = db[key];
+        const p1 = { x: d[0], y: d[1], z: d[2] + lift };
+        const p2 = { x: d[3], y: d[4], z: d[5] + lift };
+        const t = (targetZ - p1.z) / (p2.z - p1.z);
+        return { dx: p1.x + t*(p2.x-p1.x), dy: p1.y + t*(p2.y-p1.y) };
+    }
+
+    function calculate(p) {
+        const key = document.getElementById(`no_${p}`).value;
+        const mx = parseFloat(document.getElementById(`mx_${p}`).value);
+        const my = parseFloat(document.getElementById(`my_${p}`).value);
+        const mz = parseFloat(document.getElementById(`mz_${p}`).value);
+        const liftStr = document.getElementById(`lift_${p}`).value;
+        const dx = parseFloat(document.getElementById(`tdx_${p}`).innerText);
+        const dy = parseFloat(document.getElementById(`tdy_${p}`).innerText);
+        
+        if(liftStr === "") return alert("必须输入预抬值！");
+        if(isNaN(mx) || isNaN(my) || isNaN(mz)) return alert("坐标录入不全！");
+
+        const lift = parseFloat(liftStr);
+        let dz = (p === 'up') ? parseFloat(document.getElementById('dz_up').value) : mz;
+        const ox = (mx - dx) * 1000, oy = (my - dy) * 1000, oz = (mz - dz) * 1000;
+        
+        const adx = ox < 0 ? `→大里程 ${Math.abs(ox).toFixed(1)}` : `←小里程 ${Math.abs(ox).toFixed(1)}`;
+        const ady = oy < 0 ? `→线右 ${Math.abs(oy).toFixed(1)}` : `←线左 ${Math.abs(oy).toFixed(1)}`;
+
+        let html = `X偏差: <b>${ox.toFixed(1)}</b> <span class="adj-msg">${adx}</span><br>Y偏差: <b>${oy.toFixed(1)}</b> <span class="adj-msg">${ady}</span>`;
+        if(p === 'up') {
+            const adz = oz < 0 ? `<span class="warn-msg">抬高 ${Math.abs(oz).toFixed(0)}mm</span>` : `降低 ${Math.abs(oz).toFixed(0)}mm`;
+            html += `<br>Z偏差: <b>${oz.toFixed(0)}</b> <span class="adj-msg">${adz}</span>`;
+        }
+
+        document.getElementById(`res_${p}`).innerHTML = html;
+        document.getElementById(`res_${p}`).style.display = 'block';
+        history.push({ key, p, mz, mx, my, dx, dy, dz, ox, oy, oz, lift, t: new Date().toLocaleString() });
+        localStorage.setItem('xh_v13_db', JSON.stringify(history));
+    }
+
+    function switchTab(tab, el) {
+        document.querySelectorAll('.sheet').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        document.getElementById('sheet-' + tab).classList.add('active');
+        el.classList.add('active');
+        if(tab === 'all') { renderHistory(); renderDiffTable(); }
+    }
+
+    function renderDiffTable() {
+        const container = document.getElementById('diff_table');
+        const groups = {};
+        history.forEach(h => { if(!groups[h.key]) groups[h.key] = { up: null, down: null }; groups[h.key][h.p] = h; });
+        let html = `<table><thead><tr><th>管号</th><th>X互差</th><th>Y互差</th><th>结论</th></tr></thead><tbody>`;
+        let found = false;
+        for(let key in groups) {
+            const {up, down} = groups[key];
+            if(up && down) {
+                const dX = Math.abs(up.ox - down.ox).toFixed(1);
+                const dY = Math.abs(up.oy - down.oy).toFixed(1);
+                html += `<tr><td>${key}</td><td>${dX}</td><td>${dY}</td><td style="color:${(dX<=5&&dY<=5)?'green':'red'}">${(dX<=5&&dY<=5)?'合格':'超标'}</td></tr>`;
+                found = true;
+            }
+        }
+        container.innerHTML = found ? html + `</tbody></table>` : "<p style='color:#999; font-size:12px;'>暂无完整互差数据</p>";
+    }
+
+    function renderHistory() {
+        const div = document.getElementById('history_list');
+        div.innerHTML = history.slice().reverse().map(h => `
+            <div style="border-bottom:1px solid #eee; padding:8px; font-size:11px;">
+                <b>${h.key}-${h.p=='up'?'上':'下'}</b> [预抬:${h.lift}] <small>${h.t}</small><br>
+                实测: ${h.mx}, ${h.my}, ${h.mz} | 偏: X${h.ox.toFixed(1)} Y${h.oy.toFixed(1)}
+            </div>
+        `).join('');
+    }
+
+    function exportDiffCSV() {
+        const groups = {}; history.forEach(h => { if(!groups[h.key]) groups[h.key] = { up: null, down: null }; groups[h.key][h.p] = h; });
+        let csv = "\ufeff管号,上X偏,下X偏,X互差,上Y偏,下Y偏,Y互差,结论\n";
+        for(let key in groups) {
+            const {up, down} = groups[key];
+            if(up && down) { csv += `${key},${up.ox.toFixed(1)},${down.ox.toFixed(1)},${Math.abs(up.ox-down.ox).toFixed(1)},${up.oy.toFixed(1)},${down.oy.toFixed(1)},${Math.abs(up.oy-down.oy).toFixed(1)},${(Math.abs(up.ox-down.ox)<=5&&Math.abs(up.oy-down.oy)<=5)?'合格':'超标'}\n`; }
+        }
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+        a.download = `索导管互差记录.csv`; a.click();
+    }
+
+    function exportCSV() {
+        let csv = "\ufeff管号,部位,预抬,实测X,实测Y,实测Z,理论X,理论Y,X偏,Y偏,Z偏,时间\n";
+        history.forEach(h => csv += `${h.key},${h.p},${h.lift},${h.mx},${h.my},${h.mz},${h.dx.toFixed(4)},${h.dy.toFixed(4)},${h.ox.toFixed(1)},${h.oy.toFixed(1)},${h.p=='up'?h.oz.toFixed(0):''},${h.t}\n`);
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+        a.download = `调整全量记录.csv`; a.click();
+    }
+
+    window.onload = () => { syncDuctList('up'); syncDuctList('down'); };
+
+    // PWA Service Worker 注册逻辑
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                console.log('SW 注册成功');
+            }).catch(err => {
+                console.log('SW 注册失败', err);
+            });
+        });
+    }
+</script>
+</body>
+</html>

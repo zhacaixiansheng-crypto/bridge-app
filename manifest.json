@@ -1,0 +1,15 @@
+{
+  "name": "西堠门索导管调整系统",
+  "short_name": "索导管调整",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2345/2345470.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
